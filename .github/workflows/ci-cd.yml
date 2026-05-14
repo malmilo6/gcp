@@ -106,7 +106,6 @@ jobs:
           kubectl apply -f k8s/pv-pvc.yaml --validate=false
           kubectl apply -f k8s/deployment.yaml --validate=false
           kubectl apply -f k8s/service.yaml --validate=false
-          kubectl apply -f k8s/ingress.yaml --validate=false
           kubectl apply -f k8s/hpa.yaml --validate=false
 
       - name: Wait for rollout
