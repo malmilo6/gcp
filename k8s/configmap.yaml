@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: myapp
+data:
+  DB_HOST: "postgres-service"
+  DB_NAME: "appdb"
+  APP_ENV: "production"
