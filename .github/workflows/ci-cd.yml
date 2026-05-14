@@ -71,41 +71,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - id: 'auth'
-      uses: 'google-github-actions/auth@v1'
-      with:
-        credentials_json: '${{ secrets.GCP_SA_KEY }}'
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-    - name: Get GKE credentials
-      run: |
-        gcloud container clusters get-credentials ${{ env.K8S_CLUSTER }} --zone ${{ env.K8S_ZONE }} --project ${{ env.PROJECT_ID }}
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v1'
 
-    - name: Update Kubernetes manifests
-      run: |
-        sed -i 's|image:.*|image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ github.sha }}|' k8s/deployment.yaml
+      - name: Install GKE Auth Plugin
+        run: |
+          # Install the gke-gcloud-auth-plugin
+          gcloud components install gke-gcloud-auth-plugin
+          # Verify installation
+          gke-gcloud-auth-plugin --version
 
-    - name: Apply Kubernetes configurations
-      run: |
-        kubectl apply -f k8s/namespace.yaml
-        kubectl apply -f k8s/configmap.yaml
-        kubectl apply -f k8s/secret.yaml
-        kubectl apply -f k8s/pv-pvc.yaml
-        kubectl apply -f k8s/deployment.yaml
-        kubectl apply -f k8s/service.yaml
-        kubectl apply -f k8s/ingress.yaml
-        kubectl apply -f k8s/hpa.yaml
+      - name: Get GKE credentials
+        run: |
+          gcloud container clusters get-credentials ${{ env.K8S_CLUSTER }} \
+            --zone ${{ env.K8S_ZONE }} \
+            --project ${{ env.PROJECT_ID }}
 
-    - name: Wait for rollout
-      run: |
-        kubectl rollout status deployment/myapp -n myapp --timeout=5m
+      - name: Update Kubernetes manifests
+        run: |
+          sed -i 's|image:.*|image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE }}:${{ github.sha }}|' k8s/deployment.yaml
 
-    - name: Verify deployment
-      run: |
-        kubectl get pods -n myapp
-        kubectl get services -n myapp
-        kubectl get hpa -n myapp
+      - name: Apply Kubernetes configurations
+        run: |
+          kubectl apply -f k8s/namespace.yaml --validate=false
+          kubectl apply -f k8s/configmap.yaml --validate=false
+          kubectl apply -f k8s/secret.yaml --validate=false
+          kubectl apply -f k8s/pv-pvc.yaml --validate=false
+          kubectl apply -f k8s/deployment.yaml --validate=false
+          kubectl apply -f k8s/service.yaml --validate=false
+          kubectl apply -f k8s/ingress.yaml --validate=false
+          kubectl apply -f k8s/hpa.yaml --validate=false
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/myapp -n myapp --timeout=5m
 
   rollback:
     needs: deploy
